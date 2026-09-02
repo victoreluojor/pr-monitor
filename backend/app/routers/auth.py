@@ -7,7 +7,20 @@ from app.schemas import LoginRequest, Token, UserCreate, UserOut
 from app.security import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
+@router.post("/bootstrap-admin", response_model=UserOut)
+def bootstrap_admin(payload: UserCreate, db: Session = Depends(get_db)):
+    if db.query(User).count() > 0:
+        raise HTTPException(status_code=403, detail="Setup already completed")
+    user = User(
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        role=UserRole.agency_admin,
+        client_id=None,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 @router.post("/login", response_model=Token)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
